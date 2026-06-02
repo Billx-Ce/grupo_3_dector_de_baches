@@ -231,4 +231,4 @@ Esto permite mantener limpio el repositorio y versionar solo el codigo y el data
 
 ## Autor
 
-Proyecto orientado al analisis de pavimento mediante vision por computadora y entrenamiento de modelos YOLO para deteccion de danos superficiales.
+Proyecto orientado al analisis de pavimento mediante vision por computadora y entrenamiento de modelos YOLO para deteccion de daños superficiales.

@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detector de Grietas y Dataset YOLO</title>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-dark: #0ea5e9;
+      --green: #10b981;
+      --green-dark: #059669;
+      --red: #ef4444;
+      --yellow: #facc15;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(56,189,248,0.13), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.4rem;
+      color: var(--primary);
+      letter-spacing: 0.4px;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      width: auto;
+      min-width: 220px;
+      padding: 0.9rem 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 800;
+      transition: 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #082f49;
+      border-color: var(--primary);
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: rgba(30, 41, 59, 0.94);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.4rem;
+      color: #f8fafc;
+    }
+
+    .help {
+      color: var(--muted);
+      margin-bottom: 1rem;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--primary);
+      border-radius: 14px;
+      padding: 2.3rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      margin-bottom: 1rem;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .drop-zone:hover {
+      background: #0f2942;
+      transform: translateY(-1px);
+    }
+
+    .drop-zone input { display: none; }
+
+    .drop-zone .icono {
+      font-size: 2.5rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .drop-zone p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    .nombre-archivo {
+      margin-top: 0.7rem;
+      color: var(--primary);
+      font-size: 0.86rem;
+      word-break: break-all;
+      font-weight: 650;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .field {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .field select,
+    .field input[type=range] {
+      width: 100%;
+    }
+
+    .field select {
+      padding: 0.72rem;
+      background: #020617;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    .field input[type=range] {
+      accent-color: var(--primary);
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .range-row span {
+      min-width: 42px;
+      color: var(--primary);
+      font-weight: 800;
+      text-align: right;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--primary);
+      color: #082f49;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover { background: var(--primary-dark); }
+    button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+    .btn-green { background: var(--green); color: #052e1d; }
+    .btn-green:hover { background: var(--green-dark); color: #ecfdf5; }
+
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-red:hover { background: #dc2626; }
+
+    .btn-dark {
+      background: #020617;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-dark:hover { background: #0f172a; }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .spinner {
+      display: none;
+      text-align: center;
+      margin-top: 1.3rem;
+      color: var(--muted);
+    }
+
+    .spinner::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 36px;
+      border: 4px solid #334155;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 0.55rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #resultados { margin-top: 1.4rem; }
+
+    .badge-total {
+      display: inline-block;
+      background: #0f2942;
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .lista-det {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .chip {
+      background: #0f2942;
+      border-radius: 20px;
+      padding: 0.38rem 0.8rem;
+      font-size: 0.82rem;
+      color: #7dd3fc;
+    }
+
+    img.resultado, video.resultado {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(330px, 1fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .canvas-panel {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0.8rem;
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #020617;
+      border: 1px solid var(--border);
+      min-height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .empty-canvas {
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem;
+    }
+
+    .side-panel {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .txt-preview {
+      background: #020617;
+      border: 1px solid var(--border);
+      color: #86efac;
+      padding: 1rem;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      min-height: 135px;
+      font-size: 0.86rem;
+      line-height: 1.5;
+      overflow: auto;
+    }
+
+    .annotation-list {
+      display: grid;
+      gap: 0.5rem;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .annotation-item {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.75rem;
+      font-size: 0.83rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .status {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.9rem;
+      border-radius: 12px;
+      font-weight: 650;
+      line-height: 1.4;
+    }
+
+    .status.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid var(--green);
+      color: #86efac;
+    }
+
+    .status.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.14);
+      border: 1px solid var(--red);
+      color: #fecaca;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem;
+    }
+
+    .stat {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.8rem;
+      text-align: center;
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--primary);
+      font-size: 1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 1rem; }
+      .field-grid { grid-template-columns: 1fr; }
+      .workspace { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .tab-btn { width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>🔍 Detector de Grietas y Dataset YOLO</h1>
+    <p>Detecta daños en pavimento y crea anotaciones para entrenar tu modelo.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabDetector">Detectar con IA</button>
+    <button class="tab-btn" id="tabDataset">Crear Dataset YOLO</button>
+  </div>
+
+  <!-- DETECTOR -->
+  <section class="section active" id="sectionDetector">
+    <div class="card">
+      <h2>Detección automática</h2>
+      <p class="help">Sube una imagen o video. El modelo marcará automáticamente las grietas o daños detectados.</p>
+
+      <div class="drop-zone" id="dropZoneDetectar">
+        <div class="icono">📂</div>
+        <strong>Arrastra tu archivo aquí o haz clic para seleccionar</strong>
+        <p>JPG · PNG · WEBP · MP4 · AVI · MOV · MKV</p>
+        <input type="file" id="inputArchivoDetectar" accept=".jpg,.jpeg,.png,.webp,.mp4,.avi,.mov,.mkv">
+        <div class="nombre-archivo" id="nombreArchivoDetectar"></div>
+      </div>
+
+      <div class="field">
+        <label>Confianza mínima</label>
+        <div class="range-row">
+          <input type="range" id="confianza" min="0.1" max="0.95" step="0.05" value="0.5">
+          <span id="valorConfianza">0.50</span>
+        </div>
+      </div>
+
+      <button id="btnAnalizar">Analizar</button>
+      <div class="spinner" id="spinnerDetectar">Procesando, por favor espera...</div>
+      <div id="resultados"></div>
+    </div>
+  </section>
+
+  <!-- DATASET -->
+  <section class="section" id="sectionDataset">
+    <div class="card">
+      <h2>Crear dataset manual para YOLO</h2>
+      <p class="help">
+        Sube una imagen, elige la clase y dibuja cajas sobre la grieta o bache.
+        El sistema genera el TXT en formato YOLO automáticamente.
+      </p>
+
+      <div class="drop-zone" id="dropZoneDataset">
+        <div class="icono">🖼️</div>
+        <strong>Subir imagen para anotar</strong>
+        <p>JPG · JPEG · PNG · WEBP</p>
+        <input type="file" id="inputArchivoDataset" accept=".jpg,.jpeg,.png,.webp">
+        <div class="nombre-archivo" id="nombreArchivoDataset"></div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label>Clase</label>
+          <select id="claseObjeto">
+            <option value="0">0 - Grieta / Fisura</option>
+            <option value="1">1 - Bache</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>División del dataset</label>
+          <select id="splitDataset">
+            <option value="train">Train - entrenamiento</option>
+            <option value="val">Val - validación</option>
+            <option value="test">Test - prueba</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Recomendación</label>
+          <p class="help" style="margin:0;">Marca solo el área exacta del daño, no toda la carretera.</p>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <div class="canvas-panel">
+          <div class="canvas-wrap">
+            <div class="empty-canvas" id="emptyCanvas">Selecciona una imagen para empezar.</div>
+            <canvas id="canvasDataset" style="display:none;"></canvas>
+          </div>
+
+          <div class="actions">
+            <button class="btn-dark" id="btnBorrarUltima">Borrar última</button>
+            <button class="btn-red" id="btnLimpiar">Limpiar</button>
+            <button class="btn-green" id="btnGuardarDataset">Guardar imagen + TXT</button>
+            <button class="btn-dark" id="btnDescargarTxt">Descargar TXT</button>
+          </div>
+
+          <button class="btn-green" id="btnDescargarZip" style="margin-top:0.8rem;">Descargar dataset ZIP</button>
+
+          <div class="status" id="estadoDataset"></div>
+        </div>
+
+        <div class="side-panel">
+          <div class="card" style="padding:1rem;">
+            <h2>TXT YOLO</h2>
+            <p class="help">Formato: clase x_centro y_centro ancho alto</p>
+            <div class="txt-preview" id="txtPreview"></div>
+          </div>
+
+          <div class="card" style="padding:1rem;">
+            <h2>Cajas dibujadas</h2>
+            <div class="annotation-list" id="listaAnotaciones">
+              <div class="annotation-item">Todavía no hay anotaciones.</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1rem;">
+            <h2>Estadísticas</h2>
+            <div class="stats" id="statsDataset">
+              <div class="stat"><strong>0</strong><span>train</span></div>
+              <div class="stat"><strong>0</strong><span>val</span></div>
+              <div class="stat"><strong>0</strong><span>test</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const tabDetector = document.getElementById('tabDetector');
+  const tabDataset = document.getElementById('tabDataset');
+  const sectionDetector = document.getElementById('sectionDetector');
+  const sectionDataset = document.getElementById('sectionDataset');
+
+  tabDetector.addEventListener('click', () => cambiarTab('detector'));
+  tabDataset.addEventListener('click', () => cambiarTab('dataset'));
+
+  function cambiarTab(tab) {
+    tabDetector.classList.remove('active');
+    tabDataset.classList.remove('active');
+    sectionDetector.classList.remove('active');
+    sectionDataset.classList.remove('active');
+
+    if (tab === 'detector') {
+      tabDetector.classList.add('active');
+      sectionDetector.classList.add('active');
+    } else {
+      tabDataset.classList.add('active');
+      sectionDataset.classList.add('active');
+    }
+  }
+
+  function configurarDropZone(dropZone, input, callback) {
+    dropZone.addEventListener('click', () => input.click());
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.style.background = '#0f2942';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.background = '';
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.background = '';
+
+      if (e.dataTransfer.files.length > 0) {
+        callback(e.dataTransfer.files[0]);
+      }
+    });
+
+    input.addEventListener('change', () => {
+      if (input.files.length > 0) {
+        callback(input.files[0]);
+      }
+    });
+  }
+
+  // =====================================================
+  // DETECTOR
+  // =====================================================
+  const dropZoneDetectar = document.getElementById('dropZoneDetectar');
+  const inputDetectar = document.getElementById('inputArchivoDetectar');
+  const nombreDetectar = document.getElementById('nombreArchivoDetectar');
+  const btnAnalizar = document.getElementById('btnAnalizar');
+  const slider = document.getElementById('confianza');
+  const valConf = document.getElementById('valorConfianza');
+  const spinnerDetectar = document.getElementById('spinnerDetectar');
+  const resultados = document.getElementById('resultados');
+
+  let archivoDetectar = null;
+  btnAnalizar.disabled = true;
+
+  configurarDropZone(dropZoneDetectar, inputDetectar, (file) => {
+    archivoDetectar = file;
+    nombreDetectar.textContent = '📎 ' + file.name;
+    btnAnalizar.disabled = false;
+  });
+
+  slider.addEventListener('input', () => {
+    valConf.textContent = parseFloat(slider.value).toFixed(2);
+  });
+
+  btnAnalizar.addEventListener('click', async () => {
+    if (!archivoDetectar) return;
+
+    btnAnalizar.disabled = true;
+    spinnerDetectar.style.display = 'block';
+    resultados.innerHTML = '';
+
+    const fd = new FormData();
+    fd.append('archivo', archivoDetectar);
+    fd.append('confianza', slider.value);
+
+    try {
+      const res = await fetch('/detectar', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      spinnerDetectar.style.display = 'none';
+      btnAnalizar.disabled = false;
+
+      if (data.error) {
+        resultados.innerHTML = `<p style="color:#f87171">❌ ${data.error}</p>`;
+        return;
+      }
+
+      if (data.tipo === 'imagen') {
+        const chips = (data.detecciones || [])
+          .map(d => `<span class="chip">🔴 ${d.clase} — ${d.confianza}%</span>`)
+          .join('');
+
+        resultados.innerHTML = `
+          <div class="badge-total">
+            ${data.total > 0
+              ? `✅ ${data.total} detección(es) encontrada(s)`
+              : '✅ Sin detecciones'}
+          </div>
+          <div class="lista-det">${chips}</div>
+          <img class="resultado" src="${data.resultado}?t=${Date.now()}">
+          <a href="${data.resultado}" download>
+            <button class="btn-green">⬇️ Descargar imagen</button>
+          </a>`;
+      }
+
+      if (data.tipo === 'video') {
+        resultados.innerHTML = `
+          <div class="badge-total">🎬 ${data.total} detección(es) en todo el video</div>
+          <video class="resultado" controls>
+            <source src="${data.resultado}?t=${Date.now()}" type="video/mp4">
+          </video>
+          <a href="${data.resultado}" download>
+            <button class="btn-green">⬇️ Descargar video</button>
+          </a>`;
+      }
+
+    } catch (err) {
+      spinnerDetectar.style.display = 'none';
+      btnAnalizar.disabled = false;
+      resultados.innerHTML = `<p style="color:#f87171">❌ Error de conexión con el servidor</p>`;
+    }
+  });
+
+  // =====================================================
+  // DATASET
+  // =====================================================
+  const dropZoneDataset = document.getElementById('dropZoneDataset');
+  const inputDataset = document.getElementById('inputArchivoDataset');
+  const nombreDataset = document.getElementById('nombreArchivoDataset');
+  const canvas = document.getElementById('canvasDataset');
+  const ctx = canvas.getContext('2d');
+  const emptyCanvas = document.getElementById('emptyCanvas');
+  const claseObjeto = document.getElementById('claseObjeto');
+  const splitDataset = document.getElementById('splitDataset');
+  const btnBorrarUltima = document.getElementById('btnBorrarUltima');
+  const btnLimpiar = document.getElementById('btnLimpiar');
+  const btnGuardarDataset = document.getElementById('btnGuardarDataset');
+  const btnDescargarTxt = document.getElementById('btnDescargarTxt');
+  const btnDescargarZip = document.getElementById('btnDescargarZip');
+  const txtPreview = document.getElementById('txtPreview');
+  const listaAnotaciones = document.getElementById('listaAnotaciones');
+  const estadoDataset = document.getElementById('estadoDataset');
+  const statsDataset = document.getElementById('statsDataset');
+
+  let archivoImagenDataset = null;
+  let imagen = new Image();
+  let anotaciones = [];
+  let dibujando = false;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let currentY = 0;
+
+  configurarDropZone(dropZoneDataset, inputDataset, (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      mostrarEstado('Selecciona una imagen válida.', 'error');
+      return;
+    }
+
+    archivoImagenDataset = file;
+    nombreDataset.textContent = '📎 ' + file.name;
+
+    const url = URL.createObjectURL(file);
+
+    imagen.onload = () => {
+      canvas.width = imagen.naturalWidth;
+      canvas.height = imagen.naturalHeight;
+
+      anotaciones = [];
+      emptyCanvas.style.display = 'none';
+      canvas.style.display = 'block';
+
+      dibujarTodo();
+      actualizarPanel();
+      mostrarEstado('Imagen cargada. Ahora dibuja una caja sobre la grieta o bache.', 'success');
+    };
+
+    imagen.src = url;
+  });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!imagen.src) return;
+
+    canvas.setPointerCapture(e.pointerId);
+    const pos = obtenerPosicionCanvas(e);
+
+    startX = limitar(pos.x, 0, canvas.width);
+    startY = limitar(pos.y, 0, canvas.height);
+    currentX = startX;
+    currentY = startY;
+    dibujando = true;
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dibujando) return;
+
+    const pos = obtenerPosicionCanvas(e);
+    currentX = limitar(pos.x, 0, canvas.width);
+    currentY = limitar(pos.y, 0, canvas.height);
+
+    dibujarTodo();
+    dibujarCajaTemporal();
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    if (!dibujando) return;
+
+    dibujando = false;
+    const pos = obtenerPosicionCanvas(e);
+    currentX = limitar(pos.x, 0, canvas.width);
+    currentY = limitar(pos.y, 0, canvas.height);
+
+    const x1 = Math.min(startX, currentX);
+    const y1 = Math.min(startY, currentY);
+    const x2 = Math.max(startX, currentX);
+    const y2 = Math.max(startY, currentY);
+
+    const boxWidth = x2 - x1;
+    const boxHeight = y2 - y1;
+
+    if (boxWidth < 8 || boxHeight < 8) {
+      dibujarTodo();
+      mostrarEstado('La caja es demasiado pequeña. Dibuja una caja más visible.', 'error');
+      return;
+    }
+
+    const clase = parseInt(claseObjeto.value);
+
+    anotaciones.push({
+      clase,
+      x1,
+      y1,
+      x2,
+      y2,
+      x_center: ((x1 + boxWidth / 2) / canvas.width),
+      y_center: ((y1 + boxHeight / 2) / canvas.height),
+      width: (boxWidth / canvas.width),
+      height: (boxHeight / canvas.height)
+    });
+
+    dibujarTodo();
+    actualizarPanel();
+    mostrarEstado(`Caja agregada correctamente. Total: ${anotaciones.length}`, 'success');
+  });
+
+  btnBorrarUltima.addEventListener('click', () => {
+    anotaciones.pop();
+    dibujarTodo();
+    actualizarPanel();
+  });
+
+  btnLimpiar.addEventListener('click', () => {
+    anotaciones = [];
+    dibujarTodo();
+    actualizarPanel();
+    mostrarEstado('Anotaciones limpiadas.', 'success');
+  });
+
+  btnDescargarTxt.addEventListener('click', () => {
+    if (anotaciones.length === 0) {
+      mostrarEstado('Primero dibuja al menos una caja.', 'error');
+      return;
+    }
+
+    const contenido = generarTextoYOLO();
+    const blob = new Blob([contenido], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    let nombre = 'anotacion.txt';
+
+    if (archivoImagenDataset) {
+      const base = archivoImagenDataset.name.replace(/\.[^/.]+$/, '');
+      nombre = base + '.txt';
+    }
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  btnGuardarDataset.addEventListener('click', async () => {
+    if (!archivoImagenDataset) {
+      mostrarEstado('Primero selecciona una imagen.', 'error');
+      return;
+    }
+
+    if (anotaciones.length === 0) {
+      mostrarEstado('Primero dibuja al menos una caja.', 'error');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('archivo', archivoImagenDataset);
+    fd.append('split', splitDataset.value);
+
+    const anotacionesLimpias = anotaciones.map(ann => ({
+      clase: ann.clase,
+      x_center: ann.x_center,
+      y_center: ann.y_center,
+      width: ann.width,
+      height: ann.height
+    }));
+
+    fd.append('anotaciones', JSON.stringify(anotacionesLimpias));
+
+    btnGuardarDataset.disabled = true;
+
+    try {
+      const res = await fetch('/guardar_dataset', {
+        method: 'POST',
+        body: fd
+      });
+
+      const data = await res.json();
+      btnGuardarDataset.disabled = false;
+
+      if (!res.ok || data.error) {
+        mostrarEstado(data.error || 'No se pudo guardar el dataset.', 'error');
+        return;
+      }
+
+      mostrarEstado(
+        `Dataset guardado en ${data.split}. Se generaron ${data.total_anotaciones} anotación(es).`,
+        'success'
+      );
+
+      if (data.estadisticas) {
+        pintarEstadisticas(data.estadisticas);
+      }
+
+    } catch (err) {
+      btnGuardarDataset.disabled = false;
+      mostrarEstado('Error de conexión al guardar el dataset.', 'error');
+    }
+  });
+
+  btnDescargarZip.addEventListener('click', () => {
+    window.location.href = '/descargar_dataset_zip';
+  });
+
+  function obtenerPosicionCanvas(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function limitar(valor, min, max) {
+    return Math.max(min, Math.min(valor, max));
+  }
+
+  function dibujarTodo() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (imagen.src) {
+      ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);
+    }
+
+    anotaciones.forEach((ann, index) => {
+      dibujarCaja(ann.x1, ann.y1, ann.x2, ann.y2, ann.clase, index + 1);
+    });
+  }
+
+  function dibujarCajaTemporal() {
+    const x1 = Math.min(startX, currentX);
+    const y1 = Math.min(startY, currentY);
+    const x2 = Math.max(startX, currentX);
+    const y2 = Math.max(startY, currentY);
+
+    dibujarCaja(x1, y1, x2, y2, parseInt(claseObjeto.value), 'nuevo');
+  }
+
+  function dibujarCaja(x1, y1, x2, y2, clase, numero) {
+    const color = clase === 0 ? '#38bdf8' : '#facc15';
+    const nombre = clase === 0 ? 'crack' : 'pothole';
+
+    ctx.lineWidth = Math.max(3, canvas.width / 350);
+    ctx.strokeStyle = color;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+    const fontSize = Math.max(16, Math.round(canvas.width / 45));
+    ctx.font = `bold ${fontSize}px Arial`;
+
+    const texto = `${numero}. ${nombre}`;
+    const textWidth = ctx.measureText(texto).width + 14;
+    const textHeight = fontSize + 10;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(x1, Math.max(0, y1 - textHeight), textWidth, textHeight);
+
+    ctx.fillStyle = clase === 0 ? '#082f49' : '#422006';
+    ctx.fillText(texto, x1 + 7, Math.max(fontSize, y1 - 7));
+  }
+
+  function generarTextoYOLO() {
+    return anotaciones.map(ann => {
+      return `${ann.clase} ${ann.x_center.toFixed(6)} ${ann.y_center.toFixed(6)} ${ann.width.toFixed(6)} ${ann.height.toFixed(6)}`;
+    }).join('\n');
+  }
+
+  function actualizarPanel() {
+    txtPreview.textContent = generarTextoYOLO();
+
+    if (anotaciones.length === 0) {
+      listaAnotaciones.innerHTML = `<div class="annotation-item">Todavía no hay anotaciones.</div>`;
+      return;
+    }
+
+    listaAnotaciones.innerHTML = anotaciones.map((ann, index) => {
+      const nombre = ann.clase === 0 ? 'Grieta / Fisura' : 'Bache';
+
+      return `
+        <div class="annotation-item">
+          <strong>${index + 1}. ${nombre}</strong><br>
+          Clase: ${ann.clase}<br>
+          x_center: ${ann.x_center.toFixed(6)}<br>
+          y_center: ${ann.y_center.toFixed(6)}<br>
+          width: ${ann.width.toFixed(6)}<br>
+          height: ${ann.height.toFixed(6)}
+        </div>`;
+    }).join('');
+  }
+
+  function mostrarEstado(mensaje, tipo) {
+    estadoDataset.textContent = mensaje;
+    estadoDataset.className = `status ${tipo}`;
+  }
+
+  async function cargarEstadisticas() {
+    try {
+      const res = await fetch('/estadisticas_dataset');
+      const data = await res.json();
+
+      if (data.estadisticas) {
+        pintarEstadisticas(data.estadisticas);
+      }
+    } catch (err) {
+      console.log('No se pudieron cargar las estadísticas.');
+    }
+  }
+
+  function pintarEstadisticas(stats) {
+    statsDataset.innerHTML = ['train', 'val', 'test'].map(split => {
+      const item = stats[split] || { imagenes: 0, labels: 0 };
+
+      return `
+        <div class="stat">
+          <strong>${item.imagenes}</strong>
+          <span>${split}<br>${item.labels} labels</span>
+        </div>`;
+    }).join('');
+  }
+
+  cargarEstadisticas();
+</script>
+</body>
+</html>
