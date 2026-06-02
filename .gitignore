@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+
+# User uploads and generated results
+static/uploads/
+static/resultados/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
